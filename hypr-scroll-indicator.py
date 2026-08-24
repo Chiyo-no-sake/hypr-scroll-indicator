@@ -257,7 +257,6 @@ class ScrollIndicator:
         self.win = None
         self.drawing_area = None
         self.anim_id = None
-        self._monitors_cache = None
 
     # ── Scroll state ────────────────────────────────────────
 
@@ -274,9 +273,9 @@ class ScrollIndicator:
         mon_id = workspace.get("monitorID", 0)
 
         try:
-            if self._monitors_cache is None:
-                self._monitors_cache = hyprctl_sock(self.sock_path, "monitors")
-            mon = next((m for m in self._monitors_cache if m["id"] == mon_id), None)
+            # Always fetch fresh: scale/mode/position can change at runtime and
+            # Hyprland emits no monitor* event for it (only activewindow).
+            mon = next((m for m in hyprctl_sock(self.sock_path, "monitors") if m["id"] == mon_id), None)
             if not mon:
                 return None
             clients = hyprctl_sock(self.sock_path, "clients")
@@ -430,10 +429,9 @@ class ScrollIndicator:
                                 "fullscreen",
                                 "monitoradded",
                                 "monitorremoved",
+                                "configreloaded",
                             )
                         ):
-                            if event.startswith("monitor"):
-                                self._monitors_cache = None
                             GLib.idle_add(self.refresh)
             except Exception:
                 pass
